@@ -1,0 +1,12 @@
+[
+  { "domain": "vnexpress.net", "name": "VnExpress", "trust_score": 8.0, "type": "major" },
+  { "domain": "dantri.com.vn", "name": "Dân Trí", "trust_score": 7.5, "type": "major" },
+  { "domain": "zing.vn", "name": "Zing News", "trust_score": 7.0, "type": "major" },
+  { "domain": "tuoitre.vn", "name": "Tuổi Trẻ", "trust_score": 8.0, "type": "major" },
+  { "domain": "vov.vn", "name": "VOV", "trust_score": 8.5, "type": "gov" },
+  { "domain": "vtv.vn", "name": "VTV", "trust_score": 8.5, "type": "gov" },
+  { "domain": "laodong.vn", "name": "Lao Động", "trust_score": 7.0, "type": "major" },
+  { "domain": "thanhnien.vn", "name": "Thanh Niên", "trust_score": 7.5, "type": "major" },
+  { "domain": "tienphong.vn", "name": "Tiền Phong", "trust_score": 7.0, "type": "major" },
+  { "domain": "nguoiduatin.vn", "name": "Người Lao Động", "trust_score": 6.5, "type": "major" }
+]

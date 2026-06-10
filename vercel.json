@@ -1,0 +1,30 @@
+{
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "cd frontend && npm install",
+  "framework": "vite",
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "https://sourcewatch-api.onrender.com/health"
+    },
+    {
+      "source": "/analyze",
+      "destination": "https://sourcewatch-api.onrender.com/analyze"
+    },
+    {
+      "source": "/index",
+      "destination": "https://sourcewatch-api.onrender.com/index"
+    }
+  ]
+}

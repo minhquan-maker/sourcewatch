@@ -1,0 +1,16 @@
+# Environment
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite
+
+# Node
+node_modules/
+dist/
+
+# Data
+data/
