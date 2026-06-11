@@ -16,15 +16,15 @@
   "rewrites": [
     {
       "source": "/health",
-      "destination": "https://sourcewatch-api.onrender.com/health"
+      "destination": "https://sourcewatch.onrender.com/health"
     },
     {
       "source": "/analyze",
-      "destination": "https://sourcewatch-api.onrender.com/analyze"
+      "destination": "https://sourcewatch.onrender.com/analyze"
     },
     {
       "source": "/index",
-      "destination": "https://sourcewatch-api.onrender.com/index"
+      "destination": "https://sourcewatch.onrender.com/index"
     }
   ]
 }
