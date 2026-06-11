@@ -9,10 +9,10 @@ import requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-from backend.config import settings
-from backend.db import sqlite_db
-from backend.db import chromadb_client
-from backend.utils import url_hash, rate_limit
+from .config import settings
+from .db import sqlite_db
+from .db import chromadb_client
+from .utils import url_hash, rate_limit
 
 logger = logging.getLogger(__name__)
 

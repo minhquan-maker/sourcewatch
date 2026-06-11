@@ -1,5 +1,5 @@
 import pytest
-from backend.services.fact_checker import _claim_matches
+from .services.fact_checker import _claim_matches
 
 
 def test_claim_matches_exact():

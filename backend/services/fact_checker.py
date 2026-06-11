@@ -2,7 +2,7 @@ import json
 import logging
 from pathlib import Path
 
-from backend.db import chromadb_client
+from .db import chromadb_client
 
 logger = logging.getLogger(__name__)
 

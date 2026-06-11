@@ -1,5 +1,5 @@
 import pytest
-from backend.services.scorer import calculate_score, _calc_source_reputation, _calc_claim_consistency, _calc_amplification_pattern
+from .services.scorer import calculate_score, _calc_source_reputation, _calc_claim_consistency, _calc_amplification_pattern
 
 
 def test_source_reputation_vnexpress():
