@@ -21,10 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy app
 COPY . .
 
-# Copy data files from project root (build context is project root, not backend/)
-COPY data/ ./data/
-
-# Create chromadb directory
+# Create data directories (app-internal, not persistent disk)
 RUN mkdir -p /app/data/chromadb
 
 ENV PYTHONUNBUFFERED=1
