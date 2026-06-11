@@ -6,7 +6,7 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-SOURCES_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "vietnamese_sources.json"
+SOURCES_FILE = settings.chromadb_path.parent / "vietnamese_sources.json"
 
 
 def _load_sources() -> dict:

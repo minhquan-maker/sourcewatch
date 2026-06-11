@@ -2,11 +2,12 @@ import json
 import logging
 from pathlib import Path
 
+from config import settings
 from db import chromadb_client
 
 logger = logging.getLogger(__name__)
 
-FACT_CHECK_DB_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "fact_check_db.json"
+FACT_CHECK_DB_FILE = settings.chromadb_path.parent / "fact_check_db.json"
 
 
 def _load_fact_check_db() -> list[dict]:

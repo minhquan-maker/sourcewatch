@@ -16,7 +16,7 @@ from utils import url_hash, rate_limit
 
 logger = logging.getLogger(__name__)
 
-TRACKED_SOURCES_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "vietnamese_sources.json"
+TRACKED_SOURCES_FILE = settings.chromadb_path.parent / "vietnamese_sources.json"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
