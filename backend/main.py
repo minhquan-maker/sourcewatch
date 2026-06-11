@@ -26,6 +26,15 @@ async def lifespan(app: FastAPI):
         logger.info("ChromaDB initialized successfully")
     except Exception as e:
         logger.error(f"ChromaDB initialization failed: {e}")
+
+    logger.info("Initializing PostgreSQL schema...")
+    try:
+        from db import sqlite_db
+        sqlite_db._init_schema()
+        logger.info("PostgreSQL schema initialized")
+    except Exception as e:
+        logger.error(f"PostgreSQL schema init failed: {e}")
+
     yield
     logger.info("Shutting down SourceWatch API")
 

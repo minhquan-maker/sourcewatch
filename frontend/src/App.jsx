@@ -7,9 +7,10 @@ import SourceGraph from "./components/SourceGraph";
 import FactCheckBadge from "./components/FactCheckBadge";
 import Modal from "./components/Modal";
 import HowItWorksModal from "./components/HowItWorksModal";
+import AboutModal from "./components/AboutModal";
 import { analyzeUrl } from "./services/api";
 
-function Navbar({ onHowItWorks }) {
+function Navbar({ onHowItWorks, onAbout }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -26,12 +27,12 @@ function Navbar({ onHowItWorks }) {
           >
             How it works
           </button>
-          <a
-            href="#about"
-            className="text-sm text-text-secondary hover:text-text-primary transition-colors tracking-wide"
+          <button
+            onClick={onAbout}
+            className="text-sm text-text-secondary hover:text-text-primary transition-colors tracking-wide bg-transparent border-none cursor-pointer"
           >
             About
-          </a>
+          </button>
           <a
             href="https://github.com/minhquan-maker/sourcewatch"
             target="_blank"
@@ -75,14 +76,13 @@ function Navbar({ onHowItWorks }) {
             >
               How it works
             </button>
-            <a
-              href="#about"
-              onClick={() => setMenuOpen(false)}
-              className="font-display text-4xl text-text-primary uppercase hover:text-accent transition-colors"
+            <button
+              onClick={() => { setMenuOpen(false); onAbout(); }}
+              className="font-display text-4xl text-text-primary uppercase hover:text-accent transition-colors bg-transparent border-none cursor-pointer"
               style={{ transitionDelay: "180ms" }}
             >
               About
-            </a>
+            </button>
             <a
               href="https://github.com/minhquan-maker/sourcewatch"
               target="_blank"
@@ -223,6 +223,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   async function handleAnalyze(url) {
     setLoading(true);
@@ -241,7 +242,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
-      <Navbar onHowItWorks={() => setHowItWorksOpen(true)} />
+      <Navbar onHowItWorks={() => setHowItWorksOpen(true)} onAbout={() => setAboutOpen(true)} />
       <Hero onAnalyze={handleAnalyze} loading={loading} />
 
       {error && (
@@ -273,6 +274,14 @@ export default function App() {
         title="How it works"
       >
         <HowItWorksModal />
+      </Modal>
+
+      <Modal
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        title="About SourceWatch"
+      >
+        <AboutModal />
       </Modal>
     </div>
   );

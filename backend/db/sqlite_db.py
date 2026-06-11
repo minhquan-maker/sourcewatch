@@ -41,7 +41,7 @@ def get_db():
         pg.putconn(conn)
 
 
-def _init_schema(conn):
+def _init_schema():
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute("""
