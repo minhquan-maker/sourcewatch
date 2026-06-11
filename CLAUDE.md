@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SourceWatch is a Vietnamese news credibility analyzer. User pastes a news URL → backend fetches article → extracts claims → tracks propagation across VN news sources → returns timeline, source graph, and credibility score.
 
-**Stack:** Vite + React 19 + Tailwind v4 (frontend) | FastAPI + Playwright (backend) | Gemini 3.5 Flash (AI) | SQLite + ChromaDB (data)
+**Stack:** Vite + React 19 + Tailwind v4 (frontend) | FastAPI + Playwright (backend) | Gemini 3.5 Flash (AI) | PostgreSQL + ChromaDB (data)
 
 **Design:** Dark-only forensics lab aesthetic. Electric cyan accent (#22d3ee) on deep navy-black (#080b12). Fonts: Syne (display) + DM Sans (body) + JetBrains Mono (data/mono). Full spec in `DESIGN.md`.
 
@@ -48,7 +48,7 @@ fact_checker.check_claims()      → ChromaDB search_fact_checks() → JSON DB f
      ↓
 scorer.calculate_score()         → 40% source + 30% consistency + 30% amplification
      ↓
-SQLite (article_cache, propagation_events, source_nodes, source_edges)
+PostgreSQL (article_cache, propagation_events, source_nodes, source_edges)
 ChromaDB (claims, fact_checks, articles collections)
      ↓
 Frontend: ScoreCard + Timeline + SourceGraph (D3) + FactCheckBadge grid
@@ -66,7 +66,7 @@ Frontend: ScoreCard + Timeline + SourceGraph (D3) + FactCheckBadge grid
 | `backend/services/propagation.py` | `_scrape_homepage_articles()`, `index_sources()`, `track_propagation()` |
 | `backend/services/fact_checker.py` | ChromaDB primary + JSON DB keyword fallback via `_claim_matches()` |
 | `backend/services/scorer.py` | Composite score: 40% source rep + 30% claim consistency + 30% amplification |
-| `backend/db/sqlite_db.py` | article_cache (24h TTL), propagation_events, source_nodes, source_edges |
+| `backend/db/sqlite_db.py` | PostgreSQL via psycopg2 — article_cache (24h TTL), propagation_events, source_nodes, source_edges. Uses `DATABASE_URL` env var (auto-set by Render when PostgreSQL is linked). |
 | `backend/db/chromadb_client.py` | claims, fact_checks, articles collections; singleton client |
 | `backend/config.py` | Pydantic Settings — all env vars, `DATABASE_PATH`, `CHROMADB_PATH`, `playwright_timeout`, `scrape_delay` |
 | `backend/utils.py` | `url_hash()`, `rate_limit()` decorator, `retry()` decorator, `safe_get()` |
@@ -104,7 +104,7 @@ The frontend uses Vite's dev server proxy (configured in `vite.config.js`) to fo
 
 - **Package name:** `google-genai` (NOT `google-generativeai`)
 - **Model name:** `gemini-3.5-flash` (NOT `gemini-2.0-flash`)
-- **No Neo4j** — source graph stored as SQLite adjacency list
+- **No Neo4j** — source graph stored as PostgreSQL adjacency list
 - **No Google Custom Search API** — discontinued Jan 2027, use Playwright scraping
 - **Cache strategy:** article_cache 24h, propagate results 24h, fact-check 7d
 - **UTF-8 everywhere** — Vietnamese text encoding is critical
@@ -116,7 +116,7 @@ The frontend uses Vite's dev server proxy (configured in `vite.config.js`) to fo
 
 ```
 GEMINI_API_KEY
-DATABASE_PATH=./data/sourcewatch.db
+DATABASE_URL=postgresql://user:pass@host/db    # auto-set by Render when PostgreSQL is linked
 CHROMADB_PATH=./data/chromadb
 BACKEND_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
@@ -127,11 +127,12 @@ scrape_delay=1.0            # seconds between scrapes
 ## Deployment Architecture
 
 ```
-User → Vercel (frontend) → Render (backend) → Gemini API + ChromaDB + SQLite
+User → Vercel (frontend) → Render (backend) → Gemini API + ChromaDB + PostgreSQL
 ```
 
 - **Frontend**: Vercel (React 19 + Vite + Tailwind v4) — rewrites `/analyze`, `/health`, `/index` to Render via `vercel.json`
-- **Backend**: Render Web Service (FastAPI + Playwright, port 8000) — persistent disk at `/data`
+- **Backend**: Render Web Service (FastAPI + Playwright, port 8000)
+- **Database**: Render PostgreSQL (sourcewatchdb) — `DATABASE_URL` auto-set when linked
 - **No CORS needed** — Vercel rewrite proxy bypasses CORS entirely
 - **Index VN sources after deploy**: `curl -X POST https://your-render-url.onrender.com/index` (~5 min, ~150 articles)
 - Full deploy guide in `DEPLOY.md`

@@ -3,7 +3,7 @@
 ## Architecture
 
 ```
-User → Vercel (frontend) → Render (backend) → Gemini API + ChromaDB + SQLite
+User → Vercel (frontend) → Render (backend) → Gemini API + ChromaDB + PostgreSQL
 ```
 
 - **Frontend**: Vercel (React 19 + Vite + Tailwind v4) — served at `sourcewatch.vercel.app`
@@ -25,15 +25,13 @@ User → Vercel (frontend) → Render (backend) → Gemini API + ChromaDB + SQLi
    - **Plan**: Starter ($7/mo)
 3. Add environment variables (Environment → Environment Variables):
    - `GEMINI_API_KEY` — your Google AI Studio key (starts with `AIza.` or `AQ.`)
-   - `DATABASE_PATH` = `/data/sourcewatch.db`
    - `CHROMADB_PATH` = `/data/chromadb`
    - `scrape_delay` = `1.0`
    - `PYTHONPATH` = `/app`
    - `PYTHONUNBUFFERED` = `1`
-4. Add a **Persistent Disk** (Environment → Disks):
-   - Name: `sourcewatch-data`
-   - Mount Path: `/data`
-   - Size: 1GB
+4. Link your **PostgreSQL database** (Environment → Link a database):
+   - Select `sourcewatchdb` (or create a new one)
+   - Render auto-sets `DATABASE_URL` — no manual config needed
 5. Click **Create Web Service** — the Dockerfile builds Playwright + Chromium automatically.
 
 ### Option B: render.yaml (Infrastructure as Code)

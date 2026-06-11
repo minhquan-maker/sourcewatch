@@ -1,80 +1,116 @@
-import sqlite3
 import json
+import os
 import time
-from pathlib import Path
+from contextlib import contextmanager
 from typing import Any, Optional
+
+import psycopg2
+from psycopg2 import pool
+from psycopg2.extras import RealDictCursor
 
 from config import settings
 from utils import url_hash
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
+_db_pool: Optional[pool.SimpleConnectionPool] = None
 
 
-def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(settings.database_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    _init_schema(conn)
-    return conn
+def _get_pool() -> pool.SimpleConnectionPool:
+    global _db_pool
+    if _db_pool is None:
+        db_url = os.environ.get("DATABASE_URL") or settings.database_url
+        if not db_url:
+            raise RuntimeError(
+                "DATABASE_URL environment variable is not set. "
+                "Ensure a PostgreSQL database is linked to this service."
+            )
+        _db_pool = pool.SimpleConnectionPool(
+            1, 5,
+            db_url,
+            cursor_factory=RealDictCursor,
+        )
+    return _db_pool
 
 
-def _init_schema(conn: sqlite3.Connection):
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS article_cache (
-            url_hash TEXT PRIMARY KEY,
-            url TEXT NOT NULL,
-            title TEXT,
-            text TEXT,
-            source TEXT,
-            author TEXT,
-            published_at TEXT,
-            cached_at INTEGER
-        );
+@contextmanager
+def get_db():
+    pg = _get_pool()
+    conn = pg.getconn()
+    try:
+        yield conn
+    finally:
+        pg.putconn(conn)
 
-        CREATE TABLE IF NOT EXISTS propagation_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_hash TEXT NOT NULL,
-            claim_id INTEGER NOT NULL,
-            source_domain TEXT NOT NULL,
-            source_name TEXT,
-            publish_time TEXT,
-            role TEXT NOT NULL,
-            altered INTEGER DEFAULT 0,
-            cached_at INTEGER
-        );
 
-        CREATE TABLE IF NOT EXISTS source_nodes (
-            domain TEXT PRIMARY KEY,
-            name TEXT,
-            trust_score REAL,
-            total_articles INTEGER DEFAULT 0,
-            credibility_avg REAL
-        );
-
-        CREATE TABLE IF NOT EXISTS source_edges (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source_domain TEXT NOT NULL,
-            target_domain TEXT NOT NULL,
-            claim_id INTEGER,
-            copied_at TEXT,
-            altered INTEGER DEFAULT 0,
-            UNIQUE(source_domain, target_domain, claim_id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_article_cache_hash ON article_cache(url_hash);
-        CREATE INDEX IF NOT EXISTS idx_propagation_url ON propagation_events(url_hash);
-        CREATE INDEX IF NOT EXISTS idx_propagation_claim ON propagation_events(claim_id);
-    """)
+def _init_schema(conn):
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS article_cache (
+                url_hash TEXT PRIMARY KEY,
+                url TEXT NOT NULL,
+                title TEXT,
+                text TEXT,
+                source TEXT,
+                author TEXT,
+                published_at TEXT,
+                cached_at INTEGER
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS propagation_events (
+                id SERIAL PRIMARY KEY,
+                url_hash TEXT NOT NULL,
+                claim_id INTEGER NOT NULL,
+                source_domain TEXT NOT NULL,
+                source_name TEXT,
+                publish_time TEXT,
+                role TEXT NOT NULL,
+                altered INTEGER DEFAULT 0,
+                cached_at INTEGER
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS source_nodes (
+                domain TEXT PRIMARY KEY,
+                name TEXT,
+                trust_score REAL,
+                total_articles INTEGER DEFAULT 0,
+                credibility_avg REAL
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS source_edges (
+                id SERIAL PRIMARY KEY,
+                source_domain TEXT NOT NULL,
+                target_domain TEXT NOT NULL,
+                claim_id INTEGER,
+                copied_at TEXT,
+                altered INTEGER DEFAULT 0,
+                UNIQUE(source_domain, target_domain, claim_id)
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_article_cache_hash ON article_cache(url_hash)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_propagation_url ON propagation_events(url_hash)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_propagation_claim ON propagation_events(claim_id)")
+        conn.commit()
+        cur.close()
 
 
 def cache_article(url: str, article: dict, ttl_hours: int = 24) -> None:
-    conn = get_db()
-    try:
-        conn.execute(
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
             """
-            INSERT OR REPLACE INTO article_cache
+            INSERT INTO article_cache
  (url_hash, url, title, text, source, author, published_at, cached_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (url_hash) DO UPDATE SET
+                title = EXCLUDED.title,
+                text = EXCLUDED.text,
+                source = EXCLUDED.source,
+                author = EXCLUDED.author,
+                published_at = EXCLUDED.published_at,
+                cached_at = EXCLUDED.cached_at
             """,
             (
                 url_hash(url),
@@ -88,36 +124,37 @@ def cache_article(url: str, article: dict, ttl_hours: int = 24) -> None:
             ),
         )
         conn.commit()
-    finally:
-        conn.close()
+        cur.close()
 
 
 def get_cached_article(url: str, ttl_hours: int = 24) -> Optional[dict]:
-    conn = get_db()
-    try:
-        row = conn.execute(
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
             """
             SELECT * FROM article_cache
-            WHERE url_hash = ? AND (strftime('%s','now') - cached_at) < ?
+            WHERE url_hash = %s
+              AND (EXTRACT(EPOCH FROM NOW())::integer - cached_at) < %s
             """,
             (url_hash(url), ttl_hours * 3600),
-        ).fetchone()
+        )
+        row = cur.fetchone()
+        cur.close()
         if row:
             return dict(row)
         return None
-    finally:
-        conn.close()
 
 
 def save_propagation_events(url_hash_val: str, events: list[dict]) -> None:
-    conn = get_db()
-    try:
+    with get_db() as conn:
+        cur = conn.cursor()
         for event in events:
-            conn.execute(
+            cur.execute(
                 """
-                INSERT OR IGNORE INTO propagation_events
+                INSERT INTO propagation_events
                 (url_hash, claim_id, source_domain, source_name, publish_time, role, altered, cached_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
                 """,
                 (
                     url_hash_val,
@@ -131,19 +168,23 @@ def save_propagation_events(url_hash_val: str, events: list[dict]) -> None:
                 ),
             )
         conn.commit()
-    finally:
-        conn.close()
+        cur.close()
 
 
 def save_source_graph(nodes: list[dict], edges: list[dict]) -> None:
-    conn = get_db()
-    try:
+    with get_db() as conn:
+        cur = conn.cursor()
         for node in nodes:
-            conn.execute(
+            cur.execute(
                 """
-                INSERT OR REPLACE INTO source_nodes
+                INSERT INTO source_nodes
                 (domain, name, trust_score, total_articles, credibility_avg)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (domain) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    trust_score = EXCLUDED.trust_score,
+                    total_articles = EXCLUDED.total_articles,
+                    credibility_avg = EXCLUDED.credibility_avg
                 """,
                 (
                     node["domain"],
@@ -154,11 +195,14 @@ def save_source_graph(nodes: list[dict], edges: list[dict]) -> None:
                 ),
             )
         for edge in edges:
-            conn.execute(
+            cur.execute(
                 """
-                INSERT OR IGNORE INTO source_edges
+                INSERT INTO source_edges
                 (source_domain, target_domain, claim_id, copied_at, altered)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (source_domain, target_domain, claim_id) DO UPDATE SET
+                    copied_at = EXCLUDED.copied_at,
+                    altered = EXCLUDED.altered
                 """,
                 (
                     edge["source_domain"],
@@ -169,21 +213,15 @@ def save_source_graph(nodes: list[dict], edges: list[dict]) -> None:
                 ),
             )
         conn.commit()
-    finally:
-        conn.close()
+        cur.close()
 
 
 def get_source_graph() -> dict:
-    conn = get_db()
-    try:
-        nodes = [
-            dict(r)
-            for r in conn.execute("SELECT * FROM source_nodes").fetchall()
-        ]
-        edges = [
-            dict(r)
-            for r in conn.execute("SELECT * FROM source_edges").fetchall()
-        ]
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM source_nodes")
+        nodes = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM source_edges")
+        edges = [dict(r) for r in cur.fetchall()]
+        cur.close()
         return {"nodes": nodes, "edges": edges}
-    finally:
-        conn.close()
