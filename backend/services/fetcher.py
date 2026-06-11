@@ -8,9 +8,9 @@ import requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-from .config import settings
-from .db import sqlite_db
-from .utils import url_hash, retry
+from config import settings
+from db import sqlite_db
+from utils import url_hash, retry
 
 logger = logging.getLogger(__name__)
 

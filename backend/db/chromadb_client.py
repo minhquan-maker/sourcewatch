@@ -3,7 +3,7 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 from typing import Optional
 
-from .config import settings
+from config import settings
 
 
 def url_hash(url: str) -> str:

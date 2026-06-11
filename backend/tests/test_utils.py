@@ -1,5 +1,5 @@
 import pytest
-from .utils import url_hash, safe_get, retry, rate_limit
+from utils import url_hash, safe_get, retry, rate_limit
 import time
 
 

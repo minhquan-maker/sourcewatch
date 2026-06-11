@@ -2,8 +2,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import settings
-from .routers import health, analyze
+from config import settings
+from routers import health, analyze
 
 logging.basicConfig(
     level=logging.INFO,

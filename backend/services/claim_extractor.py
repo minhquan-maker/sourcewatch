@@ -5,8 +5,8 @@ from typing import Optional
 
 from google import genai
 
-from .config import settings
-from .db import chromadb_client
+from config import settings
+from db import chromadb_client
 
 logger = logging.getLogger(__name__)
 

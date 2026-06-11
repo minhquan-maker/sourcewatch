@@ -2,7 +2,7 @@ import logging
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 
-from .services import fetcher, claim_extractor, propagation, fact_checker, scorer
+from services import fetcher, claim_extractor, propagation, fact_checker, scorer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["analyze"])

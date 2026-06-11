@@ -4,8 +4,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from .config import settings
-from .utils import url_hash
+from config import settings
+from utils import url_hash
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
