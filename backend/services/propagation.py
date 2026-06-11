@@ -37,11 +37,14 @@ def _scrape_homepage_articles(source: dict) -> list[dict]:
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+            )
             page = browser.new_page()
             page.set_default_timeout(15000)
             page.set_extra_http_headers(dict(HEADERS))
-            page.goto(f"https://{domain}/", wait_until="domcontentloaded")
+            page.goto(f"https://{domain}/", wait_until="domcontentloaded", timeout=15000)
             page.wait_for_timeout(2000)
 
             links = page.query_selector_all("a[href]")

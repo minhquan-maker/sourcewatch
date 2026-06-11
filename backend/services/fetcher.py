@@ -48,13 +48,15 @@ async def fetch_article(url: str) -> dict:
 def _fetch_with_playwright(url: str) -> Optional[dict]:
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+            )
             page = browser.new_page()
-            page.set_default_timeout(settings.playwright_timeout)
+            page.set_default_timeout(15000)
             page.set_extra_http_headers(dict(HEADERS))
-            page.goto(url)
-            page.wait_for_load_state("domcontentloaded")
-            page.wait_for_timeout(3000)
+            page.goto(url, wait_until="domcontentloaded", timeout=15000)
+            page.wait_for_timeout(2000)
 
             title = page.title()
             text = _extract_article_text(page.content())
