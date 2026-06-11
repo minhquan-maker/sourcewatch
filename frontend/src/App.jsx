@@ -5,9 +5,11 @@ import ScoreCard from "./components/ScoreCard";
 import Timeline from "./components/Timeline";
 import SourceGraph from "./components/SourceGraph";
 import FactCheckBadge from "./components/FactCheckBadge";
+import Modal from "./components/Modal";
+import HowItWorksModal from "./components/HowItWorksModal";
 import { analyzeUrl } from "./services/api";
 
-function Navbar() {
+function Navbar({ onHowItWorks }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -18,16 +20,28 @@ function Navbar() {
         </span>
 
         <div className="hidden md:flex items-center gap-8">
-          {["How it works", "About", "GitHub"].map((link) => (
-            <a
-              key={link}
-              href="#"
-              className="text-sm text-text-secondary hover:text-text-primary transition-colors tracking-wide"
-            >
-              {link}
-            </a>
-          ))}
- </div>
+          <button
+            onClick={onHowItWorks}
+            className="text-sm text-text-secondary hover:text-text-primary transition-colors tracking-wide bg-transparent border-none cursor-pointer"
+          >
+            How it works
+          </button>
+          <a
+            href="#about"
+            className="text-sm text-text-secondary hover:text-text-primary transition-colors tracking-wide"
+          >
+            About
+          </a>
+          <a
+            href="https://github.com/minhquan-maker/sourcewatch"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-text-secondary hover:text-text-primary transition-colors tracking-wide inline-flex items-center gap-1"
+          >
+            <Github className="w-4 h-4" />
+            GitHub
+          </a>
+        </div>
 
         <button
           className="md:hidden text-text-primary"
@@ -54,17 +68,32 @@ function Navbar() {
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center gap-8">
-            {["How it works", "About", "GitHub"].map((link, i) => (
-              <a
-                key={link}
-                href="#"
-                className="font-display text-4xl text-text-primary uppercase hover:text-accent transition-colors"
-                style={{ transitionDelay: `${i * 80 + 100}ms` }}
-                onClick={() => setMenuOpen(false)}
-              >
-                {link}
-              </a>
-            ))}
+            <button
+              onClick={() => { setMenuOpen(false); onHowItWorks(); }}
+              className="font-display text-4xl text-text-primary uppercase hover:text-accent transition-colors bg-transparent border-none cursor-pointer"
+              style={{ transitionDelay: "100ms" }}
+            >
+              How it works
+            </button>
+            <a
+              href="#about"
+              onClick={() => setMenuOpen(false)}
+              className="font-display text-4xl text-text-primary uppercase hover:text-accent transition-colors"
+              style={{ transitionDelay: "180ms" }}
+            >
+              About
+            </a>
+            <a
+              href="https://github.com/minhquan-maker/sourcewatch"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMenuOpen(false)}
+              className="font-display text-4xl text-text-primary uppercase hover:text-accent transition-colors inline-flex items-center gap-3"
+              style={{ transitionDelay: "260ms" }}
+            >
+              <Github className="w-8 h-8" />
+              GitHub
+            </a>
           </div>
         </div>
       )}
@@ -172,11 +201,11 @@ function Results({ data }) {
 
 function Footer() {
   return (
-    <footer className="px-6 py-8 border-t border-border text-center">
+    <footer id="about" className="px-6 py-8 border-t border-border text-center">
       <p className="text-micro text-text-tertiary tracking-wide">
         Built for Vietnamese internet ·{" "}
         <a
-          href="https://github.com"
+          href="https://github.com/minhquan-maker/sourcewatch"
           target="_blank"
           rel="noopener noreferrer"
           className="text-accent hover:underline inline-flex items-center gap-1"
@@ -193,6 +222,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   async function handleAnalyze(url) {
     setLoading(true);
@@ -202,7 +232,8 @@ export default function App() {
       const data = await analyzeUrl(url);
       setResult(data);
     } catch (err) {
-      setError(err.message || "Analysis failed. Please try again.");
+      const msg = err.response?.data?.detail || err.message;
+      setError(msg || "Analysis failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -210,13 +241,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
-      <Navbar />
+      <Navbar onHowItWorks={() => setHowItWorksOpen(true)} />
       <Hero onAnalyze={handleAnalyze} loading={loading} />
 
       {error && (
         <div className="px-6 md:px-10 max-w-3xl mx-auto mb-8">
           <div className="bg-false/10 border border-false/30 rounded-xl p-4 text-false text-body">
-            {error}
+            <p className="font-semibold mb-1">Analysis failed</p>
+            <p className="text-false/80 text-small">{error}</p>
+            {error.includes("Could not fetch") && (
+              <p className="text-text-tertiary text-small mt-2">
+                The article could not be fetched. Make sure the URL is a valid Vietnamese news article and is publicly accessible.
+              </p>
+            )}
+            {error.includes("500") && (
+              <p className="text-text-tertiary text-small mt-2">
+                Server error — the backend may still be initializing. Try again in a moment, or run <code className="text-accent">POST /index</code> to warm up the database.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -224,6 +266,14 @@ export default function App() {
       {result && <Results data={result} />}
 
       <Footer />
+
+      <Modal
+        open={howItWorksOpen}
+        onClose={() => setHowItWorksOpen(false)}
+        title="How it works"
+      >
+        <HowItWorksModal />
+      </Modal>
     </div>
   );
 }

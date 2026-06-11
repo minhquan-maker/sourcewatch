@@ -13,6 +13,10 @@ SourceWatch is a Vietnamese news credibility analyzer. User pastes a news URL �
 ## Dev Commands
 
 ```bash
+# Setup (first time)
+cp backend/.env.example backend/.env
+# Edit backend/.env and add your GEMINI_API_KEY
+
 # Backend
 cd backend && pip install -r requirements.txt && playwright install chromium
 uvicorn main:app --reload --port 8000
@@ -106,6 +110,7 @@ The frontend uses Vite's dev server proxy (configured in `vite.config.js`) to fo
 - **UTF-8 everywhere** — Vietnamese text encoding is critical
 - **Respect robots.txt** — `scrape_delay` (1s default) between scrapes, rotate user-agents
 - **Import style:** Always use absolute imports (from X), NOT `from backend.X` or `from .X`. The Dockerfile flattens `backend/` into `/app`, so all imports resolve from `/app` as root.
+- **Dead config:** `google_fact_check_api_key` in `config.py` is defined but unused — do not implement Google Fact Check API integration (discontinued Jan 2027 per Critical Conventions).
 
 ## Environment Variables
 
@@ -118,6 +123,18 @@ FRONTEND_URL=http://localhost:5173
 playwright_timeout=30000    # ms
 scrape_delay=1.0            # seconds between scrapes
 ```
+
+## Deployment Architecture
+
+```
+User → Vercel (frontend) → Render (backend) → Gemini API + ChromaDB + SQLite
+```
+
+- **Frontend**: Vercel (React 19 + Vite + Tailwind v4) — rewrites `/analyze`, `/health`, `/index` to Render via `vercel.json`
+- **Backend**: Render Web Service (FastAPI + Playwright, port 8000) — persistent disk at `/data`
+- **No CORS needed** — Vercel rewrite proxy bypasses CORS entirely
+- **Index VN sources after deploy**: `curl -X POST https://your-render-url.onrender.com/index` (~5 min, ~150 articles)
+- Full deploy guide in `DEPLOY.md`
 
 ## Design Conventions
 
