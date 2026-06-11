@@ -21,7 +21,7 @@ services:
         value: "1.0"
       - key: PYTHONPATH
         value: /app
-      - key: DATABASE_PATH
-        value: ./data/sourcewatch.db
+      - key: DATA_DIR
+        value: /app/data
       - key: CHROMADB_PATH
-        value: ./data/chromadb
+        value: /app/data/chromadb
