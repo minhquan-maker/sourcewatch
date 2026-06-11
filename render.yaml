@@ -1,8 +1,11 @@
 # Render Blueprint — SourceWatch Backend
 # Deploy: `render blueprint apply render.yaml`
 #
-# NOTE: PostgreSQL database (sourcewatchdb) should be linked via Render dashboard.
-# Render auto-sets DATABASE_URL when a database is linked. No disk mount needed.
+# NOTE: render.yaml sets env vars via blueprint ONLY when using
+# `render blueprint apply`. For GitHub-auto-deploy, set these
+# environment variables MANUALLY in Render dashboard:
+#   DATA_DIR = /app/data
+#   CHROMADB_PATH = /app/data/chromadb
 
 services:
   - type: web
@@ -17,11 +20,11 @@ services:
         sync: false
       - key: GOOGLE_FACT_CHECK_API_KEY
         sync: false
-      - key: SCRAPE_DELAY
-        value: "1.0"
-      - key: PYTHONPATH
-        value: /app
       - key: DATA_DIR
         value: /app/data
       - key: CHROMADB_PATH
         value: /app/data/chromadb
+      - key: SCRAPE_DELAY
+        value: "1.0"
+      - key: PYTHONPATH
+        value: /app
