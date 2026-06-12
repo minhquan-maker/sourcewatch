@@ -12,19 +12,29 @@ logger = logging.getLogger(__name__)
 
 
 def _retry_generate(client, model, contents, max_retries=5):
-    """Call Gemini with exponential backoff retry on 503/429 errors."""
+    """Call Gemini with retry on transient errors. Quota errors fall back immediately."""
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(model=model, contents=contents)
             return response
         except Exception as e:
             err_str = str(e)
-            is_retryable = "503" in err_str or "429" in err_str or "UNAVAILABLE" in err_str or "RESOURCE_EXHAUSTED" in err_str
+            is_quota = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str
+            is_retryable = "503" in err_str or "UNAVAILABLE" in err_str
+
+            # QUOTA EXHAUSTED: fall back immediately, don't waste time retrying
+            if is_quota:
+                logger.warning(f"Gemini quota exhausted, falling back to local extraction: {err_str[:80]}")
+                return None
+
             if is_retryable and attempt < max_retries - 1:
                 wait = (2 ** attempt) * 3
+                if wait > 12:
+                    wait = 12  # cap total Gemini wait at ~30s (3+6+12=21s)
                 logger.warning(f"Gemini attempt {attempt+1} failed (retryable), waiting {wait}s: {err_str[:100]}")
                 time.sleep(wait)
             else:
+                # Unknown or non-retryable error — raise immediately
                 raise
     raise RuntimeError("Exhausted retries")
 
@@ -58,21 +68,19 @@ async def extract_claims(article_text: str) -> list[dict]:
             "gemini-3.5-flash",
             f"{SYSTEM_PROMPT}\n\nBài báo:\n{text_to_analyze}",
         )
-        raw = response.text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        claims = json.loads(raw)
-    except Exception as e:
-        err_str = str(e)
-        is_quota = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str
-        if is_quota:
-            logger.warning(f"Gemini quota exceeded, using fallback mock claims: {err_str[:80]}")
+        # None means quota exhausted — fall back immediately
+        if response is None:
             claims = _fallback_claims(article_text)
         else:
-            logger.error(f"Gemini claim extraction failed: {e}")
-            raise ValueError(f"Failed to extract claims: {e}")
+            raw = response.text.strip()
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            claims = json.loads(raw)
+    except Exception as e:
+        logger.error(f"Gemini claim extraction failed: {e}")
+        raise ValueError(f"Failed to extract claims: {e}")
 
     if not isinstance(claims, list):
         raise ValueError("Invalid claims format from Gemini")

@@ -4,6 +4,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,6 +17,20 @@ from utils import url_hash, rate_limit
 
 logger = logging.getLogger(__name__)
 
+# Hardcoded fallback — used when vietnamese_sources.json is not found
+_DEFAULT_SOURCES = [
+    {"domain": "vnexpress.net", "name": "VnExpress", "trust_score": 8.0, "type": "major"},
+    {"domain": "dantri.com.vn", "name": "Dân Trí", "trust_score": 7.5, "type": "major"},
+    {"domain": "zing.vn", "name": "Zing News", "trust_score": 7.0, "type": "major"},
+    {"domain": "tuoitre.vn", "name": "Tuổi Trẻ", "trust_score": 8.0, "type": "major"},
+    {"domain": "vov.vn", "name": "VOV", "trust_score": 8.5, "type": "gov"},
+    {"domain": "vtv.vn", "name": "VTV", "trust_score": 8.5, "type": "gov"},
+    {"domain": "laodong.vn", "name": "Lao Động", "trust_score": 7.0, "type": "major"},
+    {"domain": "thanhnien.vn", "name": "Thanh Niên", "trust_score": 7.5, "type": "major"},
+    {"domain": "tienphong.vn", "name": "Tiền Phong", "trust_score": 7.0, "type": "major"},
+    {"domain": "nguoiduatin.vn", "name": "Người Lao Động", "trust_score": 6.5, "type": "major"},
+]
+
 TRACKED_SOURCES_FILE = settings.chromadb_path.parent / "vietnamese_sources.json"
 
 HEADERS = {
@@ -25,8 +40,12 @@ HEADERS = {
 
 
 def _load_sources() -> list[dict]:
-    with open(TRACKED_SOURCES_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(TRACKED_SOURCES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.warning(f"{TRACKED_SOURCES_FILE} not found, using hardcoded defaults")
+        return _DEFAULT_SOURCES
 
 
 @rate_limit(calls=3, period=5)
@@ -198,7 +217,7 @@ async def track_propagation(original_url: str, claims: list[dict]) -> dict:
             })
 
             all_edges.append({
-                "source_domain": original_url,
+                "source_domain": urlparse(original_url).netloc,
                 "target_domain": domain,
                 "claim_id": claim["id"],
                 "altered": False,

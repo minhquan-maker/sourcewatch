@@ -8,7 +8,7 @@ import FactCheckBadge from "./components/FactCheckBadge";
 import Modal from "./components/Modal";
 import HowItWorksModal from "./components/HowItWorksModal";
 import AboutModal from "./components/AboutModal";
-import { analyzeUrl } from "./services/api";
+import { analyzeUrlSSE } from "./services/api";
 
 function Navbar({ onHowItWorks, onAbout }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -125,7 +125,7 @@ function Hero({ onAnalyze, loading }) {
         </p>
 
         <div className="flex justify-center mb-12 animate-fade-up-3">
-          <InputBar onAnalyze={onAnalyze} loading={loading} />
+          <InputBar onAnalyze={onAnalyze} loading={loading} stage={stage} />
         </div>
 
         <div className="flex flex-wrap justify-center gap-6 md:gap-12 animate-fade-up-4">
@@ -221,23 +221,32 @@ function Footer() {
 export default function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState("");
   const [error, setError] = useState(null);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
   async function handleAnalyze(url) {
     setLoading(true);
+    setStage("fetching");
     setError(null);
     setResult(null);
-    try {
-      const data = await analyzeUrl(url);
-      setResult(data);
-    } catch (err) {
-      const msg = err.response?.data?.detail || err.message;
-      setError(msg || "Analysis failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+
+    await analyzeUrlSSE(url, {
+      onStage: (s, msg) => {
+        setStage(s);
+      },
+      onResult: (data) => {
+        setResult(data);
+        setLoading(false);
+        setStage("done");
+      },
+      onError: (msg) => {
+        setError(msg || "Analysis failed. Please try again.");
+        setLoading(false);
+        setStage("");
+      },
+    });
   }
 
   return (

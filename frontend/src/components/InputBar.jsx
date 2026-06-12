@@ -1,14 +1,38 @@
-import { useState } from "react";
-import { Search, Zap, ArrowRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Zap } from "lucide-react";
 
-export default function InputBar({ onAnalyze, loading }) {
+const STAGE_LABELS = {
+  fetching: "Fetching article...",
+  claims: "Extracting claims...",
+  propagation: "Tracking propagation...",
+  factcheck: "Cross-referencing facts...",
+  scoring: "Calculating score...",
+  done: "Done!",
+};
+
+export default function InputBar({ onAnalyze, loading, stage }) {
   const [url, setUrl] = useState("");
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!loading) {
+      setElapsed(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setElapsed((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!url.trim()) return;
     onAnalyze(url.trim());
   }
+
+  const stageLabel = STAGE_LABELS[stage] || "Analyzing...";
+  const elapsedStr = elapsed > 0 ? ` (${elapsed}s)` : "";
 
   return (
     <form
@@ -34,7 +58,7 @@ export default function InputBar({ onAnalyze, loading }) {
           {loading ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />
-              Analyzing
+              {stageLabel}{elapsedStr}
             </span>
           ) : (
             <>

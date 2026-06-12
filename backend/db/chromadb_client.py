@@ -1,13 +1,9 @@
-import hashlib
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from typing import Optional
 
 from config import settings
-
-
-def url_hash(url: str) -> str:
-    return hashlib.sha256(url.encode()).hexdigest()[:16]
+from utils import url_hash
 
 _client: Optional[chromadb.PersistentClient] = None
 

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 from contextlib import contextmanager
@@ -10,6 +11,8 @@ from psycopg2.extras import RealDictCursor
 
 from config import settings
 from utils import url_hash
+
+logger = logging.getLogger(__name__)
 
 _db_pool: Optional[pool.SimpleConnectionPool] = None
 
@@ -23,11 +26,19 @@ def _get_pool() -> pool.SimpleConnectionPool:
                 "DATABASE_URL environment variable is not set. "
                 "Ensure a PostgreSQL database is linked to this service."
             )
-        _db_pool = pool.SimpleConnectionPool(
-            1, 5,
-            db_url,
-            cursor_factory=RealDictCursor,
-        )
+        # Add connection timeout so DB hangs don't block forever
+        if "connect_timeout" not in db_url:
+            separator = "&" if "?" in db_url else "?"
+            db_url += f"{separator}connect_timeout=10"
+        try:
+            _db_pool = pool.SimpleConnectionPool(
+                1, 5,
+                db_url,
+                cursor_factory=RealDictCursor,
+            )
+        except Exception as e:
+            logger.error(f"Failed to create PostgreSQL pool: {e}")
+            raise
     return _db_pool
 
 

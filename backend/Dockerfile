@@ -7,16 +7,28 @@ RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     curl \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright browsers
-RUN pip install playwright \
-    && playwright install --with-deps chromium \
-    && playwright install-deps chromium
-
-# Copy requirements and install Python deps
+# Copy requirements first, install Python deps (includes playwright==1.49.1)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Now install Chromium using the SAME playwright version from requirements.txt
+# This ensures binary version matches Python package version
+RUN playwright install chromium
 
 # Copy app
 COPY . .
